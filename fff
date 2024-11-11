@@ -1,0 +1,775 @@
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local teleportService = game:GetService("TeleportService")
+local httpService = game:GetService("HttpService")
+local runService = game:GetService("RunService")
+local coreGui = game:GetService("CoreGui")
+local players = game:GetService("Players")
+local localplayer = players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local character = game.Players.LocalPlayer.Character
+setfpscap(_G.polarsblade.client.fps)
+UserSettings().GameSettings.MasterVolume = 0
+settings().Rendering.QualityLevel = 1
+runService:Set3dRenderingEnabled(_G.polarsblade.client.rendering)
+local Players = game:GetService('Players')
+local GC = getconnections or get_signal_cons
+if GC then
+    for i,v in pairs(GC(Players.LocalPlayer.Idled)) do
+        if v["Disable"] then
+            v["Disable"](v)
+        elseif v["Disconnect"] then
+            v["Disconnect"](v)
+        end
+    end
+end
+local optimize = pcall(function()
+    local names = {"Cashiers", "Ignored", "Players", "Camera", "Terrain", localplayer.Name}
+    for _, instance in workspace:GetChildren() do
+        if not table.find(names, instance.Name) then
+            instance:Destroy()
+        end
+    end
+
+    local names = {"Drop", "Shop", "Help the patient for money", "HospitalJob", "Siren", "HouseItemSale", "Clean the shoes on the floor and come to me for cash", localplayer.Name}
+    for _, instance in workspace.Ignored:GetChildren() do
+        if not table.find(names, instance.Name) then
+            instance:Destroy()
+        end
+    end
+
+    for _, instance in workspace.Ignored.HouseItemSale:GetChildren() do
+        instance:Destroy()
+    end
+        
+    local function createPlatformsAtPositions()
+        -- List of target positions
+        local positions = {
+            Vector3.new(-190.1, 21 - 3, -381.75),
+            Vector3.new(418.99, 48 - 3, -804),
+            Vector3.new(-613.4, 21.74 - 3, -325.45),
+            Vector3.new(353.99, 48 - 3, -592),
+            Vector3.new(-849.37, 21.74 - 3, -337.31),
+            Vector3.new(-454.45, 21.75 - 3, -484.95),
+            Vector3.new(-404.5, 21.74 - 3, 88.09),
+            Vector3.new(-496.04, 48 - 3, -594.2),
+            Vector3.new(-142.5, 21.75 - 3, -823.2),
+            Vector3.new(-321.5, 21.75 - 3, -448.79),
+            Vector3.new(-208,21.75 - 3,-1131.96),
+            Vector3.new(-377.35,12.74 - 3,-689.7),
+            Vector3.new(-735.57,21.74 - 3,142.32),
+            Vector3.new(-132.39,21.74 - 3,-231.05),
+            Vector3.new(-810.19,21.74 - 3,-216.58),
+            Vector3.new(211.81,48 - 3,-594.96),
+            Vector3.new(8.14,21.75 - 3,-546.75),
+            Vector3.new(494,48 - 3,-595.68),
+            Vector3.new(-838.89,21.75 - 3,-620.58),
+            Vector3.new(450,48 - 3,-402)
+        }
+
+        -- Loop through all positions and create a platform at each one
+        for _, position in ipairs(positions) do
+            -- Create the part for the platform
+            local platform = Instance.new("Part")
+            platform.Size = Vector3.new(10, 1, 10)  -- Size of the platform (length, height, width)
+            platform.Position = position  -- Position where the platform will be placed
+            platform.Anchored = true  -- Make sure the platform is anchored
+            platform.BrickColor = BrickColor.new("Bright blue")  -- Set the color of the platform
+            platform.Parent = workspace  -- Parent the platform to the workspace, making it visible in the game
+
+            -- Optional: Add a 'Transparency' value to make it semi-transparent (can be changed)
+            platform.Transparency = 0.2
+        end
+    end
+
+    -- Call the function to create the platforms
+    createPlatformsAtPositions()
+
+end)
+
+
+local lastPlatform = nil
+local function createPlatform(position)
+    if lastPlatform then
+        lastPlatform:Destroy()  -- Remove the previous platform
+    end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
+    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
+    platform.Parent = Workspace
+
+    lastPlatform = platform  -- Update the lastPlatform variable
+
+    return platform
+end
+local lastPlatform1 = nil
+local function createPlatform1(position)
+    if lastPlatform1 then
+        lastPlatform1:Destroy()  -- Remove the previous platform
+    end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
+    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
+    platform.Parent = Workspace
+
+    lastPlatform1 = platform  -- Update the lastPlatform variable
+
+    return platform
+end
+local lastPlatform2 = nil
+local function createPlatform2(position)
+    if lastPlatform2 then
+        lastPlatform2:Destroy()  -- Remove the previous platform
+    end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
+    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
+    platform.Parent = Workspace
+
+    lastPlatform2 = platform  -- Update the lastPlatform variable
+
+    return platform
+end
+local lastPlatform3 = nil
+local function createPlatform3(position)
+    if lastPlatform3 then
+        lastPlatform3:Destroy()  -- Remove the previous platform
+    end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
+    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
+    platform.Parent = Workspace
+
+    lastPlatform3 = platform  -- Update the lastPlatform variable
+
+    return platform
+end
+local lastPlatform4 = nil
+local function createPlatform4(position)
+    if lastPlatform4 then
+        lastPlatform4:Destroy()  -- Remove the previous platform
+    end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
+    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
+    platform.Parent = Workspace
+
+    lastPlatform4 = platform  -- Update the lastPlatform variable
+
+    return platform
+end
+
+
+
+local function format(number)
+    number = tostring(number)
+    return number:reverse():gsub("...","%0,",math.floor((#number-1)/3)):reverse()
+end
+
+function hms_format(Int)
+	return string.format("%02i", Int)
+end
+
+function convert_to_hms(seconds)
+	local minutes = (seconds - seconds%60)/60
+	seconds = seconds - minutes*60
+	local hours = (minutes - minutes%60)/60
+	minutes = minutes - hours*60
+	return hms_format(hours)..":"..hms_format(minutes)..":"..hms_format(seconds)
+end
+
+local function findButton(name)
+    for key, button in ipairs(game:GetService("Workspace").Ignored.Shop:GetChildren()) do
+        local buttonName = string.split(button.Name, " ")
+        if table.find(buttonName, name) and button:FindFirstChild("Head") then
+            return button
+        end
+    end
+
+    return nil
+end
+
+local function getFurthestCash(character)
+    local furthestCash = nil
+    for key, cash in ipairs(workspace.Ignored.Drop:GetChildren()) do
+        if cash.Name == "MoneyDrop" and (character.HumanoidRootPart.Position - cash.Position).Magnitude <= 14 then
+            if furthestCash == nil then
+                furthestCash = cash
+            else
+                if (character.HumanoidRootPart.Position - cash.Position).Magnitude >= (character.HumanoidRootPart.Position - furthestCash.Position).Magnitude then
+                    furthestCash = cash
+                end
+            end
+        end
+    end
+
+    return furthestCash
+end
+
+
+
+local registers = game:GetService("Workspace").Cashiers:GetChildren()
+local function getRegister()
+    for key, register in pairs(registers) do
+        -- Exclude the VAULT register
+        if register.Name ~= "VAULT" and register.Humanoid.Health > 0 then
+            return register
+        end
+    end
+end
+
+local function serverHop()
+	local allServers = {}
+	local serverJson = httpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/2788229376/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100"))
+	for _, server in serverJson.data do
+		if server.playing ~= 0 and server.playing ~= server.maxPlayers then
+			table.insert(allServers, server.id)
+		end
+	end
+
+	local success, error = pcall(function()
+		while not success do
+			local serverid = allServers[Random.new():NextInteger(1, #allServers)]; print("serverhopping to "..serverid..".")
+			teleportService:TeleportToPlaceInstance(2788229376, serverid)
+
+			task.wait(15)
+		end
+	end)
+end
+
+local function vipRejoin()
+    while task.wait() do
+        game:GetService("TeleportService"):Teleport(3152500981)
+        task.wait(15)
+    end
+end
+
+local function serverRejoin()
+    teleportService:Teleport(game.PlaceId)
+end
+
+if isfile("polarsblade.json") then
+    local data = httpService:JSONDecode(readfile("polarsblade.json"))
+    if data then
+        if tick() - data.lastExecution >= 900 then
+            delfile("polarsblade.json")
+
+            local newData = {
+                profit = localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value,
+                executionTime = tick(),
+                lastExecution = tick(),
+            }
+            
+            writefile("polarsblade.json", httpService:JSONEncode(newData))
+        else
+            delfile("polarsblade.json")
+            local savedProfit = data.profit
+            local savedExecutionTime = data.executionTime
+
+            local newData = {
+                profit = savedProfit,
+                executionTime = savedExecutionTime,
+                lastExecution = tick(),
+            }
+
+            writefile("polarsblade.json", httpService:JSONEncode(newData))
+        end
+    end
+else
+    local newData = {
+        profit = localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value,
+        executionTime = tick(),
+        lastExecution = tick(),
+    }
+    
+    writefile("polarsblade.json", httpService:JSONEncode(newData))
+end
+
+if _G.polarsblade.client.gui == true then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/polarsblade/polarsblade/main/gui"))()
+end
+
+if _G.polarsblade.webhook.switch == true then
+    local autofarmData = httpService:JSONDecode(readfile("polarsblade.json"))
+    if _G.polarsblade.server.serverhoponnoregisters then
+        local formattedCash = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value)
+        local formattedGain = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value - autofarmData.profit)
+        local convertedTime = convert_to_hms(math.floor(tick() - autofarmData.executionTime))
+
+        print(formattedCash)
+        print(formattedGain)
+        print(convertedTime)
+
+        game:HttpGet("https://polarsblade.xyz/sendwebhook2.php?cash="..formattedCash.."&gain="..formattedGain.."&username="..localplayer.Name.."&timestamp="..convertedTime.."&webhook=".._G.polarsblade.webhook.link)
+    else
+        task.spawn(function()
+            while task.wait() do
+                local formattedCash = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value)
+                local formattedGain = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value - autofarmData.profit)
+                local convertedTime = convert_to_hms(math.floor(tick() - autofarmData.executionTime))
+
+                print(formattedCash)
+                print(formattedGain)
+                print(convertedTime)
+
+                game:HttpGet("https://polarsblade.xyz/sendwebhook2.php?cash="..formattedCash.."&gain="..formattedGain.."&username="..localplayer.Name.."&timestamp="..convertedTime.."&webhook=".._G.polarsblade.webhook.link)
+
+                task.wait(600)
+            end
+        end)
+    end
+end
+
+if _G.polarsblade.server.otheraccounts.switch then
+    for key, player in ipairs(players:GetPlayers()) do
+        if player ~= localplayer and table.find(_G.polarsblade.server.otheraccounts.ids, player.UserId) then
+            serverHop()
+        end
+    end
+end
+
+if _G.polarsblade.server.handlekicks then
+    if players:GetAttribute("VIP_SERVER_") then
+        if #coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame"):GetChildren() >= 1 then
+            vipRejoin()
+        else
+            coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame").ChildAdded:Connect(function()
+                vipRejoin()
+            end)
+        end
+    else
+        if #coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame"):GetChildren() >= 1 then
+            serverRejoin()
+        else
+            coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame").ChildAdded:Connect(function()
+                serverRejoin()
+            end)
+        end
+    end
+end
+
+if _G.polarsblade.server.serverhoponnoregisters then
+    task.spawn(function()
+        while task.wait() do
+            pcall(function()
+                if getRegister() == nil and getFurthestCash(localplayer.Character) == nil then
+                    if players:GetAttribute("VIP_SERVER_") then
+                        vipRejoin()
+
+                        task.wait(5)
+                    else
+                        serverHop()
+
+                        task.wait(5)
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+if _G.polarsblade.server.serverhoponknock then
+    task.spawn(function()
+        players.LocalPlayer.Character:WaitForChild("FULLY_LOADED_CHAR")
+        repeat task.wait() until players.LocalPlayer.Character:WaitForChild("BodyEffects")["K.O"].Value == true
+        if players:GetAttribute("VIP_SERVER_") then
+            vipRejoin()
+            task.wait(30)
+        else
+            serverHop()
+            task.wait(30)
+        end
+    end)
+end
+
+if _G.polarsblade.server.otheraccounts.switch == true then
+    for key, player in players:GetPlayers() do
+        if player ~= players.LocalPlayer and table.find(_G.polarsblade.server.otheraccounts.ids, player.UserId) then
+            serverHop()
+        end
+    end
+end
+
+local function runFarm(character)
+    local lastPosition = nil
+    local lastPosition2 = nil 
+    local lastPosition3 = nil
+    local lastPosition4 = nil
+    local lastPosition5 = nil
+
+    local function gradualTeleport(targetPosition)
+        if lastPosition and (targetPosition - lastPosition).magnitude < 0.1 then
+            return
+        end
+
+        if character then
+            local currentCFrame = character.HumanoidRootPart.CFrame
+            local distance = (targetPosition - currentCFrame.Position).magnitude
+            -- Teleport in increments of 39 studs
+            while distance > 0 do
+                local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
+                local direction = (targetPosition - currentCFrame.Position).unit
+                local newCFrame = currentCFrame + direction * moveDistance
+                character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
+                currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
+                distance = (targetPosition - currentCFrame.Position).magnitude
+                createPlatform(currentCFrame.Position)
+                wait(0.7)  -- Optional delay for smoother teleportation effect
+            end
+
+            -- Set the final position to ensure the character arrives exactly at the target
+            character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+
+            -- Store the new position as the last teleportation position
+            lastPosition = targetPosition
+        else
+            warn("Character or HumanoidRootPart not found.")
+        end
+    end
+    
+    local startupTimer = tick()
+    repeat
+        task.wait()
+    until character:FindFirstChild("FULLY_LOADED_CHAR") and tick() - startupTimer >= 1.5
+    task.wait(10)
+    if _G.polarsblade.items.unjail then
+        pcall(function()
+            if character.BodyEffects.Cuff.Value == true then
+                local keyButton = findButton("[Key]")
+
+
+                local function gradualTeleport2(targetPosition)
+                    if lastPosition2 and (targetPosition - lastPosition2).magnitude < 0.1 then
+                        return
+                    end
+
+                    if character then
+                        local currentCFrame = character.HumanoidRootPart.CFrame
+                        local distance = (targetPosition - currentCFrame.Position).magnitude
+                        -- Teleport in increments of 39 studs
+                        while distance > 0 do
+                            local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
+                            local direction = (targetPosition - currentCFrame.Position).unit
+                            local newCFrame = currentCFrame + direction * moveDistance
+                            character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
+                            currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
+                            distance = (targetPosition - currentCFrame.Position).magnitude
+                            createPlatform1(currentCFrame.Position)
+                            wait(0.7)  -- Optional delay for smoother teleportation effect
+                        end
+
+                        -- Set the final position to ensure the character arrives exactly at the target
+                        character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+
+                        -- Store the new position as the last teleportation position
+                        lastPosition2 = targetPosition
+                    else
+                        warn("Character or HumanoidRootPart not found.")
+                    end
+                end
+                if keyButton then
+                    repeat
+                        task.wait()
+
+                        local targetPosition1 = (keyButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
+                        gradualTeleport2(targetPosition1)
+
+                        character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                        if character.BodyEffects.Shop.Value ~= true then
+                            fireclickdetector(keyButton:FindFirstChild("ClickDetector"))
+                        end
+                    until localplayer.Backpack:FindFirstChild("[Key]")
+
+                    repeat
+                        task.wait()
+
+                        local targetPosition2 = (keyButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
+                        gradualTeleport2(targetPosition2)
+
+                        if localplayer.Backpack:FindFirstChild("[Key]") then
+                            character.Humanoid:EquipTool(localplayer.Backpack:FindFirstChild("[Key]"))
+                        end
+                    until character:FindFirstChild("[Key]")
+
+                    repeat
+                        task.wait()
+
+                        local targetPosition3 = (keyButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
+                        gradualTeleport2(targetPosition3)
+
+                        if character:FindFirstChild("[Key]") then
+                            character:FindFirstChild("[Key]"):Activate()
+                        end
+                    until character.BodyEffects.Cuff.Value == false
+                end
+            end
+        end)
+    end
+    if _G.polarsblade.items.mask then
+        pcall(function()
+            local maskButton = findButton("[Surgeon")
+     
+
+            local function gradualTeleport3(targetPosition)
+                if lastPosition3 and (targetPosition - lastPosition3).magnitude < 0.1 then
+                    return
+                end
+
+                if character then
+                    local currentCFrame = character.HumanoidRootPart.CFrame
+                    local distance = (targetPosition - currentCFrame.Position).magnitude
+                    -- Teleport in increments of 39 studs
+                    while distance > 0 do
+                        local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
+                        local direction = (targetPosition - currentCFrame.Position).unit
+                        local newCFrame = currentCFrame + direction * moveDistance
+                        character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
+                        currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
+                        distance = (targetPosition - currentCFrame.Position).magnitude
+                        createPlatform2(currentCFrame.Position)
+                        wait(0.7)  -- Optional delay for smoother teleportation effect
+                    end
+
+                    -- Set the final position to ensure the character arrives exactly at the target
+                    character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+
+                    -- Store the new position as the last teleportation position
+                    lastPosition3 = targetPosition
+                else
+                    warn("Character or HumanoidRootPart not found.")
+                end
+            end
+            if maskButton then
+                repeat
+                    task.wait()
+                    local targetPosition4 = (maskButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
+                    gradualTeleport3(targetPosition4)
+                    character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                    if character.BodyEffects.Shop.Value ~= true then
+                        fireclickdetector(maskButton:FindFirstChild("ClickDetector"))
+                    end
+                until localplayer.Backpack:FindFirstChild("[Mask]")
+
+                repeat
+                    task.wait()
+                    local targetPosition5 = (maskButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
+                    gradualTeleport3(targetPosition5)
+                    character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                    if localplayer.Backpack:FindFirstChild("[Mask]") then
+                        character.Humanoid:EquipTool(localplayer.Backpack:FindFirstChild("[Mask]"))
+                    end
+                until character:FindFirstChild("[Mask]")
+
+                character:FindFirstChild("[Mask]"):Activate()
+            end
+        end)
+    end
+    if not localplayer.Backpack:FindFirstChild("[Glock]") then
+        local gunButton = findButton("[Glock]")
+            local function gradualTeleport4(targetPosition)
+                if lastPosition4 and (targetPosition - lastPosition4).magnitude < 0.1 then
+                    return
+                end
+        
+
+                if character then
+                    local currentCFrame = character.HumanoidRootPart.CFrame
+                    local distance = (targetPosition - currentCFrame.Position).magnitude
+                    -- Teleport in increments of 39 studs
+                    while distance > 0 do
+                        local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
+                        local direction = (targetPosition - currentCFrame.Position).unit
+                        local newCFrame = currentCFrame + direction * moveDistance
+                        character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
+                        currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
+                        distance = (targetPosition - currentCFrame.Position).magnitude
+                        createPlatform3(currentCFrame.Position)
+                        wait(0.7)  -- Optional delay for smoother teleportation effect
+                    end
+
+                    -- Set the final position to ensure the character arrives exactly at the target
+                    character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+
+                    -- Store the new position as the last teleportation position
+                    lastPosition4 = targetPosition
+                else
+                    warn("Character or HumanoidRootPart not found.")
+                end
+            end
+        if gunButton then
+            repeat
+   
+                task.wait()
+
+                local targetPosition6 = (gunButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
+                gradualTeleport4(targetPosition6)
+
+                character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                if character.BodyEffects.Shop.Value ~= true then
+                    fireclickdetector(gunButton:FindFirstChild("ClickDetector"))
+                end
+            until localplayer.Backpack:FindFirstChild("[Glock]")
+        end
+    end
+
+    repeat
+        task.wait()
+
+        local a, b = pcall(function()
+            local register = getRegister()
+
+            local function gradualTeleport5(targetPosition)
+          
+                if lastPosition5 and (targetPosition - lastPosition5).magnitude < 0.1 then
+                    return
+                end
+            
+
+                if character then
+                    local currentCFrame = character.HumanoidRootPart.CFrame
+                    local distance = (targetPosition - currentCFrame.Position).magnitude
+                    -- Teleport in increments of 39 studs
+                    while distance > 0 do
+                        local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
+                        local direction = (targetPosition - currentCFrame.Position).unit
+                        local newCFrame = currentCFrame + direction * moveDistance
+                        character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
+                        currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
+                        distance = (targetPosition - currentCFrame.Position).magnitude
+                        createPlatform4(currentCFrame.Position)
+                        wait(0.7)  -- Optional delay for smoother teleportation effect
+                    end
+
+                    -- Set the final position to ensure the character arrives exactly at the target
+                    character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+
+                    -- Store the new position as the last teleportation position
+                    lastPosition5 = targetPosition
+                else
+                    warn("Character or HumanoidRootPart not found.")
+                end
+            end
+            if register then
+                repeat
+             
+                    task.wait()
+
+                    if not character:FindFirstChild("[Glock]") then
+                        character.Humanoid:EquipTool(localplayer.Backpack:FindFirstChild("[Glock]"))
+                    else
+                        if character.BodyEffects.Attacking.Value == false then
+                            if character.BodyEffects.MousePos.HandAttk.Value == false then
+                                replicatedStorage:WaitForChild("MainEvent"):FireServer("GunCombatToggle", true)
+                            end
+
+                            if character.BodyEffects.MousePos.HandAttk.Value == true then
+                                character:FindFirstChild("[Glock]"):Activate()
+                            end
+                        end
+                    end
+                    
+                    local function faceTarget(targetPosition)
+                        -- Calculate the direction from the character to the target (register)
+                        local direction = (targetPosition - character.HumanoidRootPart.Position).unit
+                        
+                        -- Update the character's CFrame to face the target
+                        character.HumanoidRootPart.CFrame = CFrame.new(character.HumanoidRootPart.Position, character.HumanoidRootPart.Position + direction)
+                    end
+
+                    if (Vector3.new(-624.5984497070312, 22.850021362304688, -286.6582336425781) - register.Open.Position).Magnitude <= 2 then
+                        local targetPosition8 = (register.Open.CFrame * CFrame.new(-2, 0, 0)).Position
+                        faceTarget(targetPosition8)
+                        gradualTeleport5(targetPosition8)
+
+                    elseif (Vector3.new(-627.5984497070312, 22.850021362304688, -286.6581726074219) - register.Open.Position).Magnitude <= 2 then
+                        local targetPosition9 = (register.Open.CFrame * CFrame.new(-2, 0, 0)).Position
+                        faceTarget(targetPosition9)
+                        gradualTeleport5(targetPosition9)
+                    else
+                        local targetPosition10 = register.Open.CFrame.Position
+                        faceTarget(targetPosition10)
+                        gradualTeleport5(targetPosition10)
+
+                    end
+
+                    if character.Humanoid.Sit == true then
+                        character.Humanoid.Jump = true
+                    end
+
+                    character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                until register.Humanoid.Health <= 0
+
+                repeat
+                    task.wait()
+
+                    local cashPart = getFurthestCash(character)
+                    if cashPart then
+                        repeat
+                            task.wait()
+
+                            local targetPosition11 = cashPart.Position + Vector3.new(0, -4, 0)
+                            gradualTeleport5(targetPosition11)
+
+                            character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                        until character.BodyEffects.Attacking.Value == false
+
+                        local pickupTimer = tick()
+                        local timeoutTimer = tick()
+                        repeat
+                            task.wait()
+
+                            local targetPosition12 = cashPart.Position + Vector3.new(0, -4, 0)
+                            gradualTeleport5(targetPosition12)
+
+                            character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+
+                            if tick() - pickupTimer >= 0.6 and cashPart:FindFirstChild("ClickDetector") then
+                                fireclickdetector(cashPart:FindFirstChild("ClickDetector"))
+                                pickupTimer = tick()
+                            end
+                        until tick() - timeoutTimer >= 1.2 or not cashPart or not cashPart:FindFirstChild("ClickDetector")
+                    end
+                until getFurthestCash(character) == nil
+
+            else
+                local targetPosition13 = Vector3.new(0, 0, 0)
+                gradualTeleport5(targetPosition13)
+
+                character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            end        
+        end)
+
+    
+    until character:WaitForChild("BodyEffects"):WaitForChild("Dead").Value == true
+end
+
+if _G.polarsbladeConnection ~= nil then
+    _G.polarsbladeConnection:Disconnect()
+end
+
+local function runFarmer(character)
+    runFarm(localplayer.Character)
+end
+_G.polarsbladeConnection = localplayer.CharacterAdded:Connect(runFarmer)
+runFarm(localplayer.Character)
+
