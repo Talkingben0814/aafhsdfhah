@@ -1,775 +1,629 @@
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local teleportService = game:GetService("TeleportService")
-local httpService = game:GetService("HttpService")
-local runService = game:GetService("RunService")
-local coreGui = game:GetService("CoreGui")
-local players = game:GetService("Players")
-local localplayer = players.LocalPlayer
-local TweenService = game:GetService("TweenService")
-local character = game.Players.LocalPlayer.Character
-setfpscap(_G.polarsblade.client.fps)
-UserSettings().GameSettings.MasterVolume = 0
-settings().Rendering.QualityLevel = 1
-runService:Set3dRenderingEnabled(_G.polarsblade.client.rendering)
-local Players = game:GetService('Players')
-local GC = getconnections or get_signal_cons
-if GC then
-    for i,v in pairs(GC(Players.LocalPlayer.Idled)) do
-        if v["Disable"] then
-            v["Disable"](v)
-        elseif v["Disconnect"] then
-            v["Disconnect"](v)
-        end
+local player = Players.LocalPlayer
+local isRunning = true
+local joinedServers = {}
+local failedGames = {}
+local currentTargetPlayer = nil
+local usersProcessed = 0
+local maxUsersPerGame = 5
+local followConnection = nil
+local pingOptimized = false
+
+local function applyNetworkOptimizations()
+    local flags = {
+        DFIntTaskSchedulerTargetFps = 20,
+        FFlagDebugDisableInGameMenuV2 = true,
+        FFlagDisableInGameMenuV2 = true,
+        DFIntTextureQualityOverride = 1,
+        FFlagRenderNoLights = true,
+        FFlagRenderNoShadows = true,
+        DFIntDebugFRMQualityLevelOverride = 1,
+        DFFlagTextureQualityOverrideEnabled = true,
+        FFlagHandleAltEnterFullscreenManually = false,
+        DFIntConnectionMTUSize = 1200,
+        DFIntMaxMissedWorldStepsRemembered = 1,
+        DFIntDefaultTimeoutTimeMs = 3000,
+        FFlagDebugSimIntegrationStabilityTesting = false,
+        DFFlagDebugRenderForceTechnologyVoxel = true,
+        FFlagUserHandleCameraToggle = false
+    }
+    
+    for flag, value in pairs(flags) do
+        pcall(function()
+            game:SetFastFlag(flag, value)
+        end)
     end
 end
-local optimize = pcall(function()
-    local names = {"Cashiers", "Ignored", "Players", "Camera", "Terrain", localplayer.Name}
-    for _, instance in workspace:GetChildren() do
-        if not table.find(names, instance.Name) then
-            instance:Destroy()
+
+local function optimizeClientPerformance()
+    pcall(function()
+        settings().Network.IncomingReplicationLag = 0
+        settings().Network.RenderStreamedRegions = false
+        settings().Rendering.QualityLevel = 1
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+        settings().Rendering.MaterialQualityLevel = Enum.MaterialQualityLevel.Level01
+        settings().Physics.AllowSleep = true
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnvironmentalPhysicsThrottle.DefaultAuto
+    end)
+end
+
+local function forceDisableUI()
+    spawn(function()
+        while wait(1) do
+            pcall(function()
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, false)
+                StarterGui:SetCore("TopbarEnabled", false)
+            end)
+            
+            pcall(function()
+                local playerGui = player:FindFirstChild("PlayerGui")
+                if playerGui then
+                    for _, gui in pairs(playerGui:GetChildren()) do
+                        if gui:IsA("ScreenGui") and gui.Name ~= "Chat" then
+                            gui.Enabled = false
+                        end
+                    end
+                end
+            end)
+            
+            pcall(function()
+                if workspace.CurrentCamera then
+                    workspace.CurrentCamera.FieldOfView = 30
+                end
+            end)
         end
-    end
+    end)
+end
 
-    local names = {"Drop", "Shop", "Help the patient for money", "HospitalJob", "Siren", "HouseItemSale", "Clean the shoes on the floor and come to me for cash", localplayer.Name}
-    for _, instance in workspace.Ignored:GetChildren() do
-        if not table.find(names, instance.Name) then
-            instance:Destroy()
+local function forceChatFeatures()
+    spawn(function()
+        while wait(0.5) do
+            pcall(function()
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+            end)
+            
+            pcall(function()
+                local playerGui = player:FindFirstChild("PlayerGui")
+                if playerGui then
+                    local chatGui = playerGui:FindFirstChild("Chat")
+                    if chatGui then
+                        chatGui.Enabled = true
+                    end
+                end
+            end)
+            
+            pcall(function()
+                if TextChatService.ChatInputBarConfiguration then
+                    TextChatService.ChatInputBarConfiguration.Enabled = true
+                end
+            end)
+            
+            if TextChatService.ChatInputBarConfiguration and TextChatService.ChatInputBarConfiguration.TargetTextChannel then
+                break
+            end
         end
-    end
+    end)
+end
 
-    for _, instance in workspace.Ignored.HouseItemSale:GetChildren() do
-        instance:Destroy()
-    end
-        
-    local function createPlatformsAtPositions()
-        -- List of target positions
-        local positions = {
-            Vector3.new(-190.1, 21 - 3, -381.75),
-            Vector3.new(418.99, 48 - 3, -804),
-            Vector3.new(-613.4, 21.74 - 3, -325.45),
-            Vector3.new(353.99, 48 - 3, -592),
-            Vector3.new(-849.37, 21.74 - 3, -337.31),
-            Vector3.new(-454.45, 21.75 - 3, -484.95),
-            Vector3.new(-404.5, 21.74 - 3, 88.09),
-            Vector3.new(-496.04, 48 - 3, -594.2),
-            Vector3.new(-142.5, 21.75 - 3, -823.2),
-            Vector3.new(-321.5, 21.75 - 3, -448.79),
-            Vector3.new(-208,21.75 - 3,-1131.96),
-            Vector3.new(-377.35,12.74 - 3,-689.7),
-            Vector3.new(-735.57,21.74 - 3,142.32),
-            Vector3.new(-132.39,21.74 - 3,-231.05),
-            Vector3.new(-810.19,21.74 - 3,-216.58),
-            Vector3.new(211.81,48 - 3,-594.96),
-            Vector3.new(8.14,21.75 - 3,-546.75),
-            Vector3.new(494,48 - 3,-595.68),
-            Vector3.new(-838.89,21.75 - 3,-620.58),
-            Vector3.new(450,48 - 3,-402)
-        }
+local function optimizeRendering()
+    spawn(function()
+        local heartbeatCount = 0
+        RunService.Heartbeat:Connect(function()
+            heartbeatCount = heartbeatCount + 1
+            if heartbeatCount % 30 == 0 then
+                pcall(function()
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("Decal") or obj:IsA("Texture") then
+                            obj.Transparency = 1
+                        elseif obj:IsA("ParticleEmitter") or obj:IsA("Smoke") or obj:IsA("Sparkles") or obj:IsA("Fire") then
+                            obj.Enabled = false
+                        elseif obj:IsA("Sound") then
+                            obj.Volume = 0
+                        end
+                    end
+                end)
+            end
+        end)
+    end)
+end
 
-        -- Loop through all positions and create a platform at each one
-        for _, position in ipairs(positions) do
-            -- Create the part for the platform
-            local platform = Instance.new("Part")
-            platform.Size = Vector3.new(10, 1, 10)  -- Size of the platform (length, height, width)
-            platform.Position = position  -- Position where the platform will be placed
-            platform.Anchored = true  -- Make sure the platform is anchored
-            platform.BrickColor = BrickColor.new("Bright blue")  -- Set the color of the platform
-            platform.Parent = workspace  -- Parent the platform to the workspace, making it visible in the game
+local queueteleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
-            -- Optional: Add a 'Transparency' value to make it semi-transparent (can be changed)
-            platform.Transparency = 0.2
-        end
-    end
 
-    -- Call the function to create the platforms
-    createPlatformsAtPositions()
-
+local function queueScript()
+    if queueteleport and type(queueteleport) == "function" then
+        queueteleport([[
+wait(0.5)
+print("Restarting script from queue...")
+pcall(function()
+    https://raw.githubusercontent.com/dev490812345a-ctrl/roblox-scripts/main/myscript.lua
 end)
-
-
-local lastPlatform = nil
-local function createPlatform(position)
-    if lastPlatform then
-        lastPlatform:Destroy()  -- Remove the previous platform
+]])
+    else
+        print("Queue teleport not available - script will not auto-restart")
     end
-
-    local platform = Instance.new("Part")
-    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
-    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
-    platform.Parent = Workspace
-
-    lastPlatform = platform  -- Update the lastPlatform variable
-
-    return platform
-end
-local lastPlatform1 = nil
-local function createPlatform1(position)
-    if lastPlatform1 then
-        lastPlatform1:Destroy()  -- Remove the previous platform
-    end
-
-    local platform = Instance.new("Part")
-    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
-    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
-    platform.Parent = Workspace
-
-    lastPlatform1 = platform  -- Update the lastPlatform variable
-
-    return platform
-end
-local lastPlatform2 = nil
-local function createPlatform2(position)
-    if lastPlatform2 then
-        lastPlatform2:Destroy()  -- Remove the previous platform
-    end
-
-    local platform = Instance.new("Part")
-    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
-    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
-    platform.Parent = Workspace
-
-    lastPlatform2 = platform  -- Update the lastPlatform variable
-
-    return platform
-end
-local lastPlatform3 = nil
-local function createPlatform3(position)
-    if lastPlatform3 then
-        lastPlatform3:Destroy()  -- Remove the previous platform
-    end
-
-    local platform = Instance.new("Part")
-    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
-    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
-    platform.Parent = Workspace
-
-    lastPlatform3 = platform  -- Update the lastPlatform variable
-
-    return platform
-end
-local lastPlatform4 = nil
-local function createPlatform4(position)
-    if lastPlatform4 then
-        lastPlatform4:Destroy()  -- Remove the previous platform
-    end
-
-    local platform = Instance.new("Part")
-    platform.Size = Vector3.new(50, 1, 50)  -- Adjust size as needed (width, height, depth)
-    platform.Position = position - Vector3.new(0, 3, 0)  -- Position it just below the character
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.BrickColor = BrickColor.new("Bright blue")  -- Optional: Change color for visibility
-    platform.Parent = Workspace
-
-    lastPlatform4 = platform  -- Update the lastPlatform variable
-
-    return platform
 end
 
-
-
-local function format(number)
-    number = tostring(number)
-    return number:reverse():gsub("...","%0,",math.floor((#number-1)/3)):reverse()
+local function saveScriptData()
+    local data = {
+        joinedServers = joinedServers,
+        shouldAutoStart = isRunning,
+        failedGames = failedGames,
+        usersProcessed = usersProcessed
+    }
+    pcall(function()
+        if writefile then
+            writefile("spammer_data.json", HttpService:JSONEncode(data))
+        end
+    end)
 end
 
-function hms_format(Int)
-	return string.format("%02i", Int)
-end
-
-function convert_to_hms(seconds)
-	local minutes = (seconds - seconds%60)/60
-	seconds = seconds - minutes*60
-	local hours = (minutes - minutes%60)/60
-	minutes = minutes - hours*60
-	return hms_format(hours)..":"..hms_format(minutes)..":"..hms_format(seconds)
-end
-
-local function findButton(name)
-    for key, button in ipairs(game:GetService("Workspace").Ignored.Shop:GetChildren()) do
-        local buttonName = string.split(button.Name, " ")
-        if table.find(buttonName, name) and button:FindFirstChild("Head") then
-            return button
+local function loadScriptData()
+    local success, content = pcall(function()
+        if isfile and readfile and isfile("spammer_data.json") then
+            return readfile("spammer_data.json")
+        end
+        return nil
+    end)
+    
+    if success and content then
+        local success2, data = pcall(function()
+            return HttpService:JSONDecode(content)
+        end)
+        
+        if success2 and data then
+            joinedServers = data.joinedServers or {}
+            failedGames = data.failedGames or {}
+            usersProcessed = data.usersProcessed or 0
+            return data.shouldAutoStart or false
         end
     end
+    return false
+end
 
+local function waitForStableConnection()
+    local connectionAttempts = 0
+    while connectionAttempts < 20 do
+        pcall(function()
+            local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
+            local pingValue = tonumber(ping:match("(%d+)"))
+            
+            if pingValue and pingValue < 300 then
+                return true
+            end
+        end)
+        
+        wait(0.3)
+        connectionAttempts = connectionAttempts + 1
+    end
+end
+
+local function waitForGameLoad()
+    print("Starting game load sequence...")
+    
+    local attempts = 0
+    while (not player.Character or not player.Character:FindFirstChild("Humanoid")) and attempts < 50 do
+        wait(0.1)
+        attempts = attempts + 1
+    end
+    
+    if not player.Character then
+        print("Failed to load character - restarting")
+        wait(2)
+        teleportToNewServer()
+        return
+    end
+    
+    print("Character loaded, applying optimizations...")
+    applyNetworkOptimizations()
+    optimizeClientPerformance()
+    waitForStableConnection()
+    
+    print("Disabling UI and enabling chat...")
+    forceDisableUI()
+    forceChatFeatures()
+    optimizeRendering()
+    
+    wait(2)
+    
+    local chatAttempts = 0
+    while chatAttempts < 30 do
+        local chatReady = false
+        pcall(function()
+            if TextChatService.ChatInputBarConfiguration and TextChatService.ChatInputBarConfiguration.TargetTextChannel then
+                chatReady = true
+            end
+        end)
+        
+        if chatReady then
+            print("Chat system ready!")
+            break
+        end
+        
+        wait(0.3)
+        chatAttempts = chatAttempts + 1
+    end
+    
+    print("Game load sequence complete!")
+    wait(1)
+end
+
+local function cleanupOldServers()
+    local currentTime = tick()
+    for serverId, joinTime in pairs(joinedServers) do
+        if currentTime - joinTime >= 60 then
+            joinedServers[serverId] = nil
+        end
+    end
+    
+    for gameId, failTime in pairs(failedGames) do
+        if currentTime - failTime >= 120 then
+            failedGames[gameId] = nil
+        end
+    end
+end
+
+local function sendMessage(message)
+    local success = false
+    local attempts = 0
+    
+    while not success and attempts < 5 do
+        success = pcall(function()
+            if TextChatService.ChatInputBarConfiguration and TextChatService.ChatInputBarConfiguration.TargetTextChannel then
+                TextChatService.ChatInputBarConfiguration.TargetTextChannel:SendAsync(message)
+                return true
+            end
+        end)
+        
+        if not success then
+            attempts = attempts + 1
+            wait(0.3)
+        end
+    end
+    
+    return success
+end
+
+local function getRandomMessages()
+    local selectedMessages = {}
+    local availableMessages = {}
+    
+    for i, msg in ipairs(messages) do
+        table.insert(availableMessages, msg)
+    end
+    
+    for i = 1, 2 do
+        if #availableMessages > 0 then
+            local randomIndex = math.random(1, #availableMessages)
+            table.insert(selectedMessages, availableMessages[randomIndex])
+            table.remove(availableMessages, randomIndex)
+        end
+    end
+    
+    return selectedMessages
+end
+
+local function stopFollowing()
+    if followConnection then
+        followConnection:Disconnect()
+        followConnection = nil
+    end
+end
+
+local function followPlayer(targetPlayer)
+    stopFollowing()
+    
+    if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    local updateCount = 0
+    followConnection = RunService.Heartbeat:Connect(function()
+        updateCount = updateCount + 1
+        if updateCount % 3 == 0 then
+            pcall(function()
+                if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+                    local newPosition = targetPosition + Vector3.new(0, 10, 0)
+                    character.HumanoidRootPart.CFrame = CFrame.new(newPosition)
+                end
+            end)
+        end
+    end)
+    
+    return true
+end
+
+local function getRandomPlayer()
+    local players = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(players, p)
+        end
+    end
+    
+    if #players > 0 then
+        return players[math.random(1, #players)]
+    end
     return nil
 end
 
-local function getFurthestCash(character)
-    local furthestCash = nil
-    for key, cash in ipairs(workspace.Ignored.Drop:GetChildren()) do
-        if cash.Name == "MoneyDrop" and (character.HumanoidRootPart.Position - cash.Position).Magnitude <= 14 then
-            if furthestCash == nil then
-                furthestCash = cash
-            else
-                if (character.HumanoidRootPart.Position - cash.Position).Magnitude >= (character.HumanoidRootPart.Position - furthestCash.Position).Magnitude then
-                    furthestCash = cash
-                end
-            end
-        end
+local function processUser()
+    local targetPlayer = getRandomPlayer()
+    if not targetPlayer then
+        wait(0.8)
+        return false
     end
-
-    return furthestCash
-end
-
-
-
-local registers = game:GetService("Workspace").Cashiers:GetChildren()
-local function getRegister()
-    for key, register in pairs(registers) do
-        -- Exclude the VAULT register
-        if register.Name ~= "VAULT" and register.Humanoid.Health > 0 then
-            return register
-        end
-    end
-end
-
-local function serverHop()
-	local allServers = {}
-	local serverJson = httpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/2788229376/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100"))
-	for _, server in serverJson.data do
-		if server.playing ~= 0 and server.playing ~= server.maxPlayers then
-			table.insert(allServers, server.id)
-		end
-	end
-
-	local success, error = pcall(function()
-		while not success do
-			local serverid = allServers[Random.new():NextInteger(1, #allServers)]; print("serverhopping to "..serverid..".")
-			teleportService:TeleportToPlaceInstance(2788229376, serverid)
-
-			task.wait(15)
-		end
-	end)
-end
-
-local function vipRejoin()
-    while task.wait() do
-        game:GetService("TeleportService"):Teleport(3152500981)
-        task.wait(15)
-    end
-end
-
-local function serverRejoin()
-    teleportService:Teleport(game.PlaceId)
-end
-
-if isfile("polarsblade.json") then
-    local data = httpService:JSONDecode(readfile("polarsblade.json"))
-    if data then
-        if tick() - data.lastExecution >= 900 then
-            delfile("polarsblade.json")
-
-            local newData = {
-                profit = localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value,
-                executionTime = tick(),
-                lastExecution = tick(),
-            }
-            
-            writefile("polarsblade.json", httpService:JSONEncode(newData))
-        else
-            delfile("polarsblade.json")
-            local savedProfit = data.profit
-            local savedExecutionTime = data.executionTime
-
-            local newData = {
-                profit = savedProfit,
-                executionTime = savedExecutionTime,
-                lastExecution = tick(),
-            }
-
-            writefile("polarsblade.json", httpService:JSONEncode(newData))
-        end
-    end
-else
-    local newData = {
-        profit = localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value,
-        executionTime = tick(),
-        lastExecution = tick(),
-    }
     
-    writefile("polarsblade.json", httpService:JSONEncode(newData))
-end
-
-if _G.polarsblade.client.gui == true then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/polarsblade/polarsblade/main/gui"))()
-end
-
-if _G.polarsblade.webhook.switch == true then
-    local autofarmData = httpService:JSONDecode(readfile("polarsblade.json"))
-    if _G.polarsblade.server.serverhoponnoregisters then
-        local formattedCash = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value)
-        local formattedGain = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value - autofarmData.profit)
-        local convertedTime = convert_to_hms(math.floor(tick() - autofarmData.executionTime))
-
-        print(formattedCash)
-        print(formattedGain)
-        print(convertedTime)
-
-        game:HttpGet("https://polarsblade.xyz/sendwebhook2.php?cash="..formattedCash.."&gain="..formattedGain.."&username="..localplayer.Name.."&timestamp="..convertedTime.."&webhook=".._G.polarsblade.webhook.link)
-    else
-        task.spawn(function()
-            while task.wait() do
-                local formattedCash = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value)
-                local formattedGain = format(localplayer:WaitForChild("DataFolder"):WaitForChild("Currency").Value - autofarmData.profit)
-                local convertedTime = convert_to_hms(math.floor(tick() - autofarmData.executionTime))
-
-                print(formattedCash)
-                print(formattedGain)
-                print(convertedTime)
-
-                game:HttpGet("https://polarsblade.xyz/sendwebhook2.php?cash="..formattedCash.."&gain="..formattedGain.."&username="..localplayer.Name.."&timestamp="..convertedTime.."&webhook=".._G.polarsblade.webhook.link)
-
-                task.wait(600)
+    print("Processing user: " .. targetPlayer.Name)
+    
+    if followPlayer(targetPlayer) then
+        wait(0.3)
+        
+        local selectedMessages = getRandomMessages()
+        for i, message in ipairs(selectedMessages) do
+            if not isRunning then break end
+            local sent = sendMessage(message)
+            if sent then
+                print("Sent message: " .. message)
+            else
+                print("Failed to send message")
             end
+            wait(math.random(0.8, 1.2))
+        end
+        
+        wait(0.5)
+        stopFollowing()
+        return true
+    end
+    
+    return false
+end
+
+local function getAvailableServers(gameId)
+    local availableServers = {}
+    local httpAttempts = 0
+    
+    while httpAttempts < 3 do
+        local success, result = pcall(function()
+            return game:HttpGet("https://games.roblox.com/v1/games/" .. gameId .. "/servers/Public?sortOrder=Asc&limit=100", true)
         end)
-    end
-end
-
-if _G.polarsblade.server.otheraccounts.switch then
-    for key, player in ipairs(players:GetPlayers()) do
-        if player ~= localplayer and table.find(_G.polarsblade.server.otheraccounts.ids, player.UserId) then
-            serverHop()
-        end
-    end
-end
-
-if _G.polarsblade.server.handlekicks then
-    if players:GetAttribute("VIP_SERVER_") then
-        if #coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame"):GetChildren() >= 1 then
-            vipRejoin()
-        else
-            coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame").ChildAdded:Connect(function()
-                vipRejoin()
+        
+        if success then
+            local parseSuccess, data = pcall(function()
+                return HttpService:JSONDecode(result)
             end)
-        end
-    else
-        if #coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame"):GetChildren() >= 1 then
-            serverRejoin()
-        else
-            coreGui.RobloxPromptGui:FindFirstChildOfClass("Frame").ChildAdded:Connect(function()
-                serverRejoin()
-            end)
-        end
-    end
-end
-
-if _G.polarsblade.server.serverhoponnoregisters then
-    task.spawn(function()
-        while task.wait() do
-            pcall(function()
-                if getRegister() == nil and getFurthestCash(localplayer.Character) == nil then
-                    if players:GetAttribute("VIP_SERVER_") then
-                        vipRejoin()
-
-                        task.wait(5)
-                    else
-                        serverHop()
-
-                        task.wait(5)
+            
+            if parseSuccess and data and data.data and type(data.data) == "table" then
+                for _, server in ipairs(data.data) do
+                    if server and 
+                       server.id and 
+                       server.playing and 
+                       server.maxPlayers and
+                       server.ping and
+                       server.playing >= 2 and
+                       server.playing < server.maxPlayers * 0.8 and
+                       server.ping < 200 and
+                       server.id ~= game.JobId and 
+                       not joinedServers[server.id] then
+                        table.insert(availableServers, {
+                            id = server.id,
+                            playing = server.playing,
+                            maxPlayers = server.maxPlayers,
+                            ping = server.ping,
+                            priority = server.playing - (server.ping / 10)
+                        })
                     end
                 end
-            end)
+                
+                table.sort(availableServers, function(a, b)
+                    return a.priority > b.priority
+                end)
+                break
+            end
         end
-    end)
+        
+        httpAttempts = httpAttempts + 1
+        if httpAttempts < 3 then
+            wait(2)
+        end
+    end
+    
+    return availableServers
 end
 
-if _G.polarsblade.server.serverhoponknock then
-    task.spawn(function()
-        players.LocalPlayer.Character:WaitForChild("FULLY_LOADED_CHAR")
-        repeat task.wait() until players.LocalPlayer.Character:WaitForChild("BodyEffects")["K.O"].Value == true
-        if players:GetAttribute("VIP_SERVER_") then
-            vipRejoin()
-            task.wait(30)
-        else
-            serverHop()
-            task.wait(30)
+local function selectBestServer(availableServers)
+    if #availableServers == 0 then
+        return nil
+    end
+    
+    local lowPingServers = {}
+    local goodServers = {}
+    
+    for _, server in ipairs(availableServers) do
+        local populationRatio = server.playing / server.maxPlayers
+        if server.ping < 100 and server.playing >= 3 and populationRatio >= 0.15 and populationRatio <= 0.75 then
+            table.insert(lowPingServers, server)
+        elseif server.ping < 150 and server.playing >= 2 and populationRatio <= 0.8 then
+            table.insert(goodServers, server)
         end
-    end)
-end
-
-if _G.polarsblade.server.otheraccounts.switch == true then
-    for key, player in players:GetPlayers() do
-        if player ~= players.LocalPlayer and table.find(_G.polarsblade.server.otheraccounts.ids, player.UserId) then
-            serverHop()
-        end
+    end
+    
+    if #lowPingServers > 0 then
+        return lowPingServers[math.random(1, math.min(3, #lowPingServers))]
+    elseif #goodServers > 0 then
+        return goodServers[math.random(1, math.min(5, #goodServers))]
+    else
+        return availableServers[math.random(1, math.min(3, #availableServers))]
     end
 end
 
-local function runFarm(character)
-    local lastPosition = nil
-    local lastPosition2 = nil 
-    local lastPosition3 = nil
-    local lastPosition4 = nil
-    local lastPosition5 = nil
+local function tryTeleportWithRetry(gameId, serverId)
+    local maxRetries = 3
+    
+    for attempt = 1, maxRetries do
+        local success, errorMsg = pcall(function()
+            wait(0.5)
+            
+            if serverId then
+                TeleportService:TeleportToPlaceInstance(tonumber(gameId), serverId, player)
+            else
+                TeleportService:Teleport(tonumber(gameId), player)
+            end
+        end)
+        
+        if success then
+            return true
+        else
+            print("Teleport attempt " .. attempt .. " failed: " .. tostring(errorMsg))
+            
+            if string.find(tostring(errorMsg), "773") or string.find(tostring(errorMsg), "restricted") then
+                print("Place is restricted or session conflict - trying different approach")
+                wait(2)
+                
+                local logoutSuccess = pcall(function()
+                    game:GetService("GuiService"):Logout()
+                end)
+                
+                if logoutSuccess then
+                    wait(3)
+                end
+            end
+            
+            if attempt < maxRetries then
+                wait(math.random(2, 4))
+            else
+                failedGames[gameId] = tick()
+                return false
+            end
+        end
+    end
+    
+    return false
+end
 
-    local function gradualTeleport(targetPosition)
-        if lastPosition and (targetPosition - lastPosition).magnitude < 0.1 then
+local function teleportToNewServer()
+    cleanupOldServers()
+    saveScriptData()
+    queueScript()
+    
+    wait(math.random(1, 2))
+    
+    local currentGameId = tostring(game.PlaceId)
+    local attempts = 0
+    local maxAttempts = 8
+    
+    while attempts < maxAttempts and isRunning do
+        print("Server search attempt " .. (attempts + 1) .. " for current game: " .. currentGameId)
+        
+        local availableServers = getAvailableServers(currentGameId)
+        
+        if #availableServers > 0 then
+            local selectedServer = selectBestServer(availableServers)
+            
+            if selectedServer then
+                joinedServers[selectedServer.id] = tick()
+                saveScriptData()
+                
+                print("Attempting to join new server: " .. selectedServer.id)
+                if tryTeleportWithRetry(currentGameId, selectedServer.id) then
+                    return
+                end
+            end
+        end
+        
+        print("No suitable servers found, trying random server hop...")
+        if tryTeleportWithRetry(currentGameId, nil) then
             return
         end
-
-        if character then
-            local currentCFrame = character.HumanoidRootPart.CFrame
-            local distance = (targetPosition - currentCFrame.Position).magnitude
-            -- Teleport in increments of 39 studs
-            while distance > 0 do
-                local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
-                local direction = (targetPosition - currentCFrame.Position).unit
-                local newCFrame = currentCFrame + direction * moveDistance
-                character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
-                currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
-                distance = (targetPosition - currentCFrame.Position).magnitude
-                createPlatform(currentCFrame.Position)
-                wait(0.7)  -- Optional delay for smoother teleportation effect
-            end
-
-            -- Set the final position to ensure the character arrives exactly at the target
-            character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
-
-            -- Store the new position as the last teleportation position
-            lastPosition = targetPosition
-        else
-            warn("Character or HumanoidRootPart not found.")
-        end
-    end
-    
-    local startupTimer = tick()
-    repeat
-        task.wait()
-    until character:FindFirstChild("FULLY_LOADED_CHAR") and tick() - startupTimer >= 1.5
-    task.wait(10)
-    if _G.polarsblade.items.unjail then
-        pcall(function()
-            if character.BodyEffects.Cuff.Value == true then
-                local keyButton = findButton("[Key]")
-
-
-                local function gradualTeleport2(targetPosition)
-                    if lastPosition2 and (targetPosition - lastPosition2).magnitude < 0.1 then
-                        return
-                    end
-
-                    if character then
-                        local currentCFrame = character.HumanoidRootPart.CFrame
-                        local distance = (targetPosition - currentCFrame.Position).magnitude
-                        -- Teleport in increments of 39 studs
-                        while distance > 0 do
-                            local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
-                            local direction = (targetPosition - currentCFrame.Position).unit
-                            local newCFrame = currentCFrame + direction * moveDistance
-                            character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
-                            currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
-                            distance = (targetPosition - currentCFrame.Position).magnitude
-                            createPlatform1(currentCFrame.Position)
-                            wait(0.7)  -- Optional delay for smoother teleportation effect
-                        end
-
-                        -- Set the final position to ensure the character arrives exactly at the target
-                        character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
-
-                        -- Store the new position as the last teleportation position
-                        lastPosition2 = targetPosition
-                    else
-                        warn("Character or HumanoidRootPart not found.")
-                    end
-                end
-                if keyButton then
-                    repeat
-                        task.wait()
-
-                        local targetPosition1 = (keyButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
-                        gradualTeleport2(targetPosition1)
-
-                        character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                        if character.BodyEffects.Shop.Value ~= true then
-                            fireclickdetector(keyButton:FindFirstChild("ClickDetector"))
-                        end
-                    until localplayer.Backpack:FindFirstChild("[Key]")
-
-                    repeat
-                        task.wait()
-
-                        local targetPosition2 = (keyButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
-                        gradualTeleport2(targetPosition2)
-
-                        if localplayer.Backpack:FindFirstChild("[Key]") then
-                            character.Humanoid:EquipTool(localplayer.Backpack:FindFirstChild("[Key]"))
-                        end
-                    until character:FindFirstChild("[Key]")
-
-                    repeat
-                        task.wait()
-
-                        local targetPosition3 = (keyButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
-                        gradualTeleport2(targetPosition3)
-
-                        if character:FindFirstChild("[Key]") then
-                            character:FindFirstChild("[Key]"):Activate()
-                        end
-                    until character.BodyEffects.Cuff.Value == false
-                end
-            end
-        end)
-    end
-    if _G.polarsblade.items.mask then
-        pcall(function()
-            local maskButton = findButton("[Surgeon")
-     
-
-            local function gradualTeleport3(targetPosition)
-                if lastPosition3 and (targetPosition - lastPosition3).magnitude < 0.1 then
-                    return
-                end
-
-                if character then
-                    local currentCFrame = character.HumanoidRootPart.CFrame
-                    local distance = (targetPosition - currentCFrame.Position).magnitude
-                    -- Teleport in increments of 39 studs
-                    while distance > 0 do
-                        local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
-                        local direction = (targetPosition - currentCFrame.Position).unit
-                        local newCFrame = currentCFrame + direction * moveDistance
-                        character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
-                        currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
-                        distance = (targetPosition - currentCFrame.Position).magnitude
-                        createPlatform2(currentCFrame.Position)
-                        wait(0.7)  -- Optional delay for smoother teleportation effect
-                    end
-
-                    -- Set the final position to ensure the character arrives exactly at the target
-                    character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
-
-                    -- Store the new position as the last teleportation position
-                    lastPosition3 = targetPosition
-                else
-                    warn("Character or HumanoidRootPart not found.")
-                end
-            end
-            if maskButton then
-                repeat
-                    task.wait()
-                    local targetPosition4 = (maskButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
-                    gradualTeleport3(targetPosition4)
-                    character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                    if character.BodyEffects.Shop.Value ~= true then
-                        fireclickdetector(maskButton:FindFirstChild("ClickDetector"))
-                    end
-                until localplayer.Backpack:FindFirstChild("[Mask]")
-
-                repeat
-                    task.wait()
-                    local targetPosition5 = (maskButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
-                    gradualTeleport3(targetPosition5)
-                    character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                    if localplayer.Backpack:FindFirstChild("[Mask]") then
-                        character.Humanoid:EquipTool(localplayer.Backpack:FindFirstChild("[Mask]"))
-                    end
-                until character:FindFirstChild("[Mask]")
-
-                character:FindFirstChild("[Mask]"):Activate()
-            end
-        end)
-    end
-    if not localplayer.Backpack:FindFirstChild("[Glock]") then
-        local gunButton = findButton("[Glock]")
-            local function gradualTeleport4(targetPosition)
-                if lastPosition4 and (targetPosition - lastPosition4).magnitude < 0.1 then
-                    return
-                end
         
-
-                if character then
-                    local currentCFrame = character.HumanoidRootPart.CFrame
-                    local distance = (targetPosition - currentCFrame.Position).magnitude
-                    -- Teleport in increments of 39 studs
-                    while distance > 0 do
-                        local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
-                        local direction = (targetPosition - currentCFrame.Position).unit
-                        local newCFrame = currentCFrame + direction * moveDistance
-                        character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
-                        currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
-                        distance = (targetPosition - currentCFrame.Position).magnitude
-                        createPlatform3(currentCFrame.Position)
-                        wait(0.7)  -- Optional delay for smoother teleportation effect
-                    end
-
-                    -- Set the final position to ensure the character arrives exactly at the target
-                    character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
-
-                    -- Store the new position as the last teleportation position
-                    lastPosition4 = targetPosition
-                else
-                    warn("Character or HumanoidRootPart not found.")
-                end
-            end
-        if gunButton then
-            repeat
-   
-                task.wait()
-
-                local targetPosition6 = (gunButton.Head.CFrame * CFrame.new(0, -6, 0)).Position
-                gradualTeleport4(targetPosition6)
-
-                character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                if character.BodyEffects.Shop.Value ~= true then
-                    fireclickdetector(gunButton:FindFirstChild("ClickDetector"))
-                end
-            until localplayer.Backpack:FindFirstChild("[Glock]")
-        end
+        attempts = attempts + 1
+        wait(math.random(4, 8))
     end
-
-    repeat
-        task.wait()
-
-        local a, b = pcall(function()
-            local register = getRegister()
-
-            local function gradualTeleport5(targetPosition)
-          
-                if lastPosition5 and (targetPosition - lastPosition5).magnitude < 0.1 then
-                    return
-                end
-            
-
-                if character then
-                    local currentCFrame = character.HumanoidRootPart.CFrame
-                    local distance = (targetPosition - currentCFrame.Position).magnitude
-                    -- Teleport in increments of 39 studs
-                    while distance > 0 do
-                        local moveDistance = math.min(39, distance)  -- Move 39 studs or the remaining distance
-                        local direction = (targetPosition - currentCFrame.Position).unit
-                        local newCFrame = currentCFrame + direction * moveDistance
-                        character.HumanoidRootPart.CFrame = CFrame.new(newCFrame.Position)
-                        currentCFrame = character.HumanoidRootPart.CFrame  -- Update the current position
-                        distance = (targetPosition - currentCFrame.Position).magnitude
-                        createPlatform4(currentCFrame.Position)
-                        wait(0.7)  -- Optional delay for smoother teleportation effect
-                    end
-
-                    -- Set the final position to ensure the character arrives exactly at the target
-                    character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
-
-                    -- Store the new position as the last teleportation position
-                    lastPosition5 = targetPosition
-                else
-                    warn("Character or HumanoidRootPart not found.")
-                end
-            end
-            if register then
-                repeat
-             
-                    task.wait()
-
-                    if not character:FindFirstChild("[Glock]") then
-                        character.Humanoid:EquipTool(localplayer.Backpack:FindFirstChild("[Glock]"))
-                    else
-                        if character.BodyEffects.Attacking.Value == false then
-                            if character.BodyEffects.MousePos.HandAttk.Value == false then
-                                replicatedStorage:WaitForChild("MainEvent"):FireServer("GunCombatToggle", true)
-                            end
-
-                            if character.BodyEffects.MousePos.HandAttk.Value == true then
-                                character:FindFirstChild("[Glock]"):Activate()
-                            end
-                        end
-                    end
-                    
-                    local function faceTarget(targetPosition)
-                        -- Calculate the direction from the character to the target (register)
-                        local direction = (targetPosition - character.HumanoidRootPart.Position).unit
-                        
-                        -- Update the character's CFrame to face the target
-                        character.HumanoidRootPart.CFrame = CFrame.new(character.HumanoidRootPart.Position, character.HumanoidRootPart.Position + direction)
-                    end
-
-                    if (Vector3.new(-624.5984497070312, 22.850021362304688, -286.6582336425781) - register.Open.Position).Magnitude <= 2 then
-                        local targetPosition8 = (register.Open.CFrame * CFrame.new(-2, 0, 0)).Position
-                        faceTarget(targetPosition8)
-                        gradualTeleport5(targetPosition8)
-
-                    elseif (Vector3.new(-627.5984497070312, 22.850021362304688, -286.6581726074219) - register.Open.Position).Magnitude <= 2 then
-                        local targetPosition9 = (register.Open.CFrame * CFrame.new(-2, 0, 0)).Position
-                        faceTarget(targetPosition9)
-                        gradualTeleport5(targetPosition9)
-                    else
-                        local targetPosition10 = register.Open.CFrame.Position
-                        faceTarget(targetPosition10)
-                        gradualTeleport5(targetPosition10)
-
-                    end
-
-                    if character.Humanoid.Sit == true then
-                        character.Humanoid.Jump = true
-                    end
-
-                    character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                until register.Humanoid.Health <= 0
-
-                repeat
-                    task.wait()
-
-                    local cashPart = getFurthestCash(character)
-                    if cashPart then
-                        repeat
-                            task.wait()
-
-                            local targetPosition11 = cashPart.Position + Vector3.new(0, -4, 0)
-                            gradualTeleport5(targetPosition11)
-
-                            character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                        until character.BodyEffects.Attacking.Value == false
-
-                        local pickupTimer = tick()
-                        local timeoutTimer = tick()
-                        repeat
-                            task.wait()
-
-                            local targetPosition12 = cashPart.Position + Vector3.new(0, -4, 0)
-                            gradualTeleport5(targetPosition12)
-
-                            character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-
-                            if tick() - pickupTimer >= 0.6 and cashPart:FindFirstChild("ClickDetector") then
-                                fireclickdetector(cashPart:FindFirstChild("ClickDetector"))
-                                pickupTimer = tick()
-                            end
-                        until tick() - timeoutTimer >= 1.2 or not cashPart or not cashPart:FindFirstChild("ClickDetector")
-                    end
-                until getFurthestCash(character) == nil
-
-            else
-                local targetPosition13 = Vector3.new(0, 0, 0)
-                gradualTeleport5(targetPosition13)
-
-                character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-            end        
-        end)
-
     
-    until character:WaitForChild("BodyEffects"):WaitForChild("Dead").Value == true
+    print("All server hop attempts failed, retrying in 15 seconds...")
+    wait(15)
+    if isRunning then
+        teleportToNewServer()
+    end
 end
 
-if _G.polarsbladeConnection ~= nil then
-    _G.polarsbladeConnection:Disconnect()
+local function startSpamming()
+    spawn(function()
+        waitForGameLoad()
+        
+        if not isRunning then return end
+        
+        print("Starting spam process...")
+        local processedInThisGame = 0
+        
+        while processedInThisGame < maxUsersPerGame and isRunning do
+            if processUser() then
+                processedInThisGame = processedInThisGame + 1
+                usersProcessed = usersProcessed + 1
+                saveScriptData()
+                print("Processed " .. processedInThisGame .. "/" .. maxUsersPerGame .. " users")
+                wait(math.random(1, 2))
+            else
+                wait(1)
+            end
+        end
+        
+        if isRunning then
+            print("Max users reached, hopping to new server...")
+            usersProcessed = 0
+            saveScriptData()
+            wait(1)
+            teleportToNewServer()
+        end
+    end)
 end
 
-local function runFarmer(character)
-    runFarm(localplayer.Character)
+local function stopSpamming()
+    isRunning = false
+    stopFollowing()
+    saveScriptData()
+    print("Script stopped")
 end
-_G.polarsbladeConnection = localplayer.CharacterAdded:Connect(runFarmer)
-runFarm(localplayer.Character)
+
+local function onKeyPress(key)
+    if key.KeyCode == Enum.KeyCode.Q then
+        stopSpamming()
+    elseif key.KeyCode == Enum.KeyCode.R then
+        teleportToNewServer()
+    end
+end
+
+local function initialize()
+    print("Initializing spammer script...")
+    loadScriptData()
+    
+    UserInputService.InputBegan:Connect(onKeyPress)
+    
+    if game.JobId and game.JobId ~= "" then
+        joinedServers[game.JobId] = tick()
+    end
+    
+    startSpamming()
+end
+
+initialize()
+
 
